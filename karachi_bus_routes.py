@@ -6,7 +6,7 @@ _BUS_ROUTES_GRAPH = None
 
 
 def _build_graph() -> Dict[str, List[str]]:
-    """Build Karachi bus routes graph in memory."""
+    """Build Karachi bus routes graph in memory as a bidirectional (cyclic) graph."""
     routes = [
         ["saddar", "tariq road", "shahrah-e-faisal", "gulshan-e-iqbal", "nipa"],
         ["nazimabad", "liaquatabad", "shahrah-e-faisal", "clifton", "do darya"],
@@ -26,10 +26,20 @@ def _build_graph() -> Dict[str, List[str]]:
         for i in range(len(route) - 1):
             current = route[i]
             next_stop = route[i + 1]
+            
+            # Initialize nodes if they don't exist
             if current not in graph:
                 graph[current] = []
+            if next_stop not in graph:
+                graph[next_stop] = []
+            
+            # Add forward edge (current -> next_stop)
             if next_stop not in graph[current]:
                 graph[current].append(next_stop)
+            
+            # Add reverse edge (next_stop -> current) to make it bidirectional
+            if current not in graph[next_stop]:
+                graph[next_stop].append(current)
     
     return graph
 
@@ -55,6 +65,7 @@ def find_route(source: str, destination: str, depth: int) -> List[List[str]]:
     destination = destination.lower().strip()
     graph = _BUS_ROUTES_GRAPH
     
+    # Check if both nodes exist in the graph
     if source not in graph or destination not in graph:
         return []
     
@@ -94,5 +105,5 @@ _BUS_ROUTES_GRAPH = _build_graph()
 def get_all_route_names() -> List[str]:
     return list(set([stop for route in _BUS_ROUTES_GRAPH.values() for stop in route]))
 
-print(get_all_route_names())
-# print(find_route("saddar", "gulshan-e-iqbal", 2))
+# print(get_all_route_names())
+print(find_route("nipa", "do darya", 5))
