@@ -1,0 +1,32 @@
+[
+    {
+        "query": "What is 10 * (5 + 2)?",
+        "tool": null,
+        "result": null,
+        "explanation": "You are an intelligent AI assistant with these tools:\n- CALCULATOR: for math\n- DATETIME: for date/time\n- WEATHER: for weather info\n- WIKIPEDIA: for factual summaries\n- PLOT: to visualize math functions\n\nContext (last 3 interactions):\n\n\nNew question: What is 10 * (5 + 2)?\n\nIf a tool is needed, respond with:\n\"USE_TOOL: <TOOL_NAME> <query>\"\nOtherwise, answer directly.\n\n10 * (5 + 2) = 10 * 7 = 70."
+    },
+    {
+        "query": "Plot y = x**2 - 4*x + 3",
+        "tool": null,
+        "result": null,
+        "explanation": "You are an intelligent AI assistant with these tools:\n- CALCULATOR: for math\n- DATETIME: for date/time\n- WEATHER: for weather info\n- WIKIPEDIA: for factual summaries\n- PLOT: to visualize math functions\n\nContext (last 3 interactions):\nUser asked: What is 10 * (5 + 2)?\nTool: None\nResult: None\n\nNew question: Plot y = x**2 - 4*x + 3\n\nIf a tool is needed, respond with:\n\"USE_TOOL: <TOOL_NAME> <query>\"\nOtherwise, answer directly.\nUser"
+    },
+    {
+        "query": "Now plot the derivative of the previous function.",
+        "tool": null,
+        "result": null,
+        "explanation": "You are an intelligent AI assistant with these tools:\n- CALCULATOR: for math\n- DATETIME: for date/time\n- WEATHER: for weather info\n- WIKIPEDIA: for factual summaries\n- PLOT: to visualize math functions\n\nContext (last 3 interactions):\nUser asked: What is 10 * (5 + 2)?\nTool: None\nResult: None\nUser asked: Plot y = x**2 - 4*x + 3\nTool: None\nResult: None\n\nNew question: Now plot the derivative of the previous function.\n\nIf a tool is needed, respond with:\n\"USE_TOOL: <TOOL_NAME> <query>\"\nOtherwise, answer directly.\nUser"
+    },
+    {
+        "query": "Who is Albert Einstein?",
+        "tool": null,
+        "result": null,
+        "explanation": "You are an intelligent AI assistant with these tools:\n- CALCULATOR: for math\n- DATETIME: for date/time\n- WEATHER: for weather info\n- WIKIPEDIA: for factual summaries\n- PLOT: to visualize math functions\n\nContext (last 3 interactions):\nUser asked: What is 10 * (5 + 2)?\nTool: None\nResult: None\nUser asked: Plot y = x**2 - 4*x + 3\nTool: None\nResult: None\nUser asked: Now plot the derivative of the previous function.\nTool: None\nResult: None\n\nNew question: Who is Albert Einstein?\n\nIf a tool is needed, respond with:\n\"USE_TOOL: <TOOL_NAME> <query>\"\nOtherwise, answer directly.\nUser"
+    },
+    {
+        "query": "Summarize the previous answer in one sentence.",
+        "tool": null,
+        "result": null,
+        "explanation": "You are an intelligent AI assistant with these tools:\n- CALCULATOR: for math\n- DATETIME: for date/time\n- WEATHER: for weather info\n- WIKIPEDIA: for factual summaries\n- PLOT: to visualize math functions\n\nContext (last 3 interactions):\nUser asked: Plot y = x**2 - 4*x + 3\nTool: None\nResult: None\nUser asked: Now plot the derivative of the previous function.\nTool: None\nResult: None\nUser asked: Who is Albert Einstein?\nTool: None\nResult: None\n\nNew question: Summarize the previous answer in one sentence.\n\nIf a tool is needed, respond with:\n\"USE_TOOL: <TOOL_NAME> <query>\"\nOtherwise, answer directly.\nUser"
+    }
+]
