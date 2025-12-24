@@ -1,10 +1,31 @@
-from langchain.chat_models import init_chat_model
 from langchain.agents import create_agent
 from langchain.tools import tool
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_ollama import ChatOllama
 from typing import Optional
+from langchain_core.messages import AIMessage
 
+# Note: Install required packages with:
+# pip install -U langchain langchain-ollama langchain-community faiss-cpu langchain-text-splitters langchain-huggingface sentence-transformers
+# 
+# Install and run Ollama locally:
+# 1. Download Ollama from: https://ollama.com/download
+# 2. Pull a model: ollama pull llama3.2
+# 3. Make sure Ollama is running: ollama serve
 
-llm_model = init_chat_model("gpt-4o-mini")
+# Initialize Ollama LLM (local, offline, free)
+# Available models: "llama3.2", "llama3.1", "mistral", "phi3", etc.
+# Make sure you've pulled the model first: ollama pull llama3.2
+llm_model = ChatOllama(
+    model="llama3.2",
+    base_url="http://localhost:11434",  # Default Ollama URL
+    temperature=0.7
+)
+
+embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 # ==================== KNOWLEDGE BASES ====================
 
@@ -226,105 +247,110 @@ CAR_MARKET_KB = {
 }
 
 
-# ==================== TOOLS ====================
+# ==================== RAG IMPLEMENTATION ====================
 
-@tool
-def stock_market_tool(stock_symbol: str) -> str:
-    """
-    Retrieve information about Pakistani stocks from the knowledge base.
+# Convert knowledge bases to documents
+def create_documents_from_kb():
+    """Convert all knowledge bases into Document objects for RAG."""
+    documents = []
     
-    Args:
-        stock_symbol: Stock symbol to look up (e.g., 'HBL', 'UBL', 'OGDC', 'PSO', 'KSE-100')
+    # Stock Market documents
+    for symbol, data in STOCK_MARKET_KB.items():
+        content = f"Stock: {symbol}\n"
+        if isinstance(data, dict):
+            for key, value in data.items():
+                content += f"{key}: {value}\n"
+        doc = Document(
+            page_content=content,
+            metadata={"source": "stock_market", "symbol": symbol, "category": "stocks"}
+        )
+        documents.append(doc)
     
-    Returns:
-        Detailed stock information including price, trend, and recommendations
-    """
-    stock_symbol = stock_symbol.upper()
-    if stock_symbol in STOCK_MARKET_KB:
-        return str(STOCK_MARKET_KB[stock_symbol])
-    else:
-        #  return keys like {available stocks: HBL, UBL, OGDC, PSO, KSE-100}
-        return f"Available stocks: {', '.join(STOCK_MARKET_KB.keys())}"
+    # Property Market documents
+    for location, data in PROPERTY_MARKET_KB.items():
+        content = f"Location: {location}\n"
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if isinstance(value, dict):
+                    content += f"{key}:\n"
+                    for sub_key, sub_value in value.items():
+                        content += f"  {sub_key}: {sub_value}\n"
+                else:
+                    content += f"{key}: {value}\n"
+        doc = Document(
+            page_content=content,
+            metadata={"source": "property_market", "location": location, "category": "property"}
+        )
+        documents.append(doc)
+    
+    # Gold Price documents
+    for gold_type, data in GOLD_PRICE_KB.items():
+        content = f"Gold Type: {gold_type}\n"
+        if isinstance(data, dict):
+            for key, value in data.items():
+                content += f"{key}: {value}\n"
+        doc = Document(
+            page_content=content,
+            metadata={"source": "gold_prices", "gold_type": gold_type, "category": "gold"}
+        )
+        documents.append(doc)
+    
+    # Car Market documents
+    for car_model, data in CAR_MARKET_KB.items():
+        content = f"Car Model: {car_model}\n"
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if isinstance(value, dict):
+                    content += f"{key}:\n"
+                    for sub_key, sub_value in value.items():
+                        content += f"  {sub_key}: {sub_value}\n"
+                else:
+                    content += f"{key}: {value}\n"
+        doc = Document(
+            page_content=content,
+            metadata={"source": "car_market", "car_model": car_model, "category": "cars"}
+        )
+        documents.append(doc)
+    
+    return documents
 
-@tool
-def property_market_tool(location: str, property_type: Optional[str] = None) -> str:
-    """
-    Retrieve property market information from the knowledge base.
-    
-    Args:
-        location: Location name (e.g., 'Karachi DHA', 'Lahore DHA', 'Islamabad F-7')
-        property_type: Type of property (e.g., '3-bedroom apartment', '4-bedroom house', 'commercial plot')
-    
-    Returns:
-        Detailed property market information including prices, trends, and recommendations
-    """
-    location = location.title()
-    
-    if location in PROPERTY_MARKET_KB:
-        location_info = PROPERTY_MARKET_KB[location]
-        
-        if property_type:
-            return str(location_info[property_type])
-        else:
-            return f"Available property types for {location}: {', '.join(location_info.keys())}"
-    else:
-        return f"Available locations: {', '.join(PROPERTY_MARKET_KB.keys())}"
+# Create documents from knowledge bases
+all_documents = create_documents_from_kb() 
 
-@tool
-def gold_price_tool() -> str:
-    """
-    Retrieve current gold prices from the knowledge base.
-    
-    Args:
-        None
-    
-    Returns:
-        Current gold prices per tola, per gram, and market trends like {24k_gold, 22k_gold, 21k_gold, historical_trend}
-    """
-    
-    return f"Current gold prices: {GOLD_PRICE_KB}"
-    
-@tool
-def car_market_tool(car_model: str, model_year: Optional[str] = None) -> str:
-    """
-    Retrieve car market information from the knowledge base.
-    
-    Args:
-        car_model: Car model name (e.g., 'Toyota Corolla', 'Honda Civic', 'Suzuki Alto')
-        model_year: Specific model year (e.g., '2024', '2023', '2022')
-    
-    Returns:
-        Car prices, depreciation rates, and market information
-    """
-    car_model = car_model.title()
-    
-    if car_model in CAR_MARKET_KB:
-        car_info = CAR_MARKET_KB[car_model]
-        return str(car_info)
-    else:
-        return f"Available car models: {', '.join(CAR_MARKET_KB.keys())}"
+# Split documents into chunks
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+all_splits = text_splitter.split_documents(all_documents)
+
+# Create vector store with embeddings
+# Reference: https://docs.langchain.com/oss/python/langchain/rag#build-a-rag-agent-with-langchain
+vector_store = FAISS.from_documents(documents=all_splits, embedding=embeddings)
+
+# Create retrieval tool for RAG
+@tool(response_format="content_and_artifact")
+def retrieve_context(query: str):
+    """Retrieve relevant information from the investment knowledge base to help answer queries about stocks, property, gold, and cars."""
+    retrieved_docs = vector_store.similarity_search(query, k=4)
+    serialized = "\n\n".join(
+        (f"Source: {doc.metadata.get('source', 'unknown')} | Category: {doc.metadata.get('category', 'unknown')}\nContent: {doc.page_content}")
+        for doc in retrieved_docs
+    )
+    return serialized, retrieved_docs
 
 
 # Define system prompt for the portfolio manager agent
 SYSTEM_PROMPT = """You are a Senior Portfolio Manager and Investment Advisor with deep expertise across multiple asset classes.
 
-You systematically use all available market analysis tools - stock_market_tool, property_market_tool, gold_price_tool, and car_market_tool - to gather current market data before making recommendations. You compare returns, risks, liquidity, and market trends across stocks, real estate, precious metals, and vehicles to provide holistic investment advice.
+You have access to a retrieval tool that can search through a comprehensive knowledge base containing information about:
+- Pakistani stock market (HBL, UBL, OGDC, PSO, KSE-100)
+- Property market (Karachi DHA, Lahore DHA, Islamabad F-7)
+- Gold prices (24k, 22k, 21k gold)
+- Car market (Toyota Corolla, Honda Civic, Suzuki Alto, Toyota Camry)
+
+Use the retrieve_context tool to gather relevant market information before making recommendations. The tool will automatically find the most relevant information based on the user's query.
 
 You are advising an individual investor with a budget of 5,000,000 PKR.
 
-IMPORTANT: You MUST use ALL available tools to gather current market information before making your recommendation:
-1. Use stock_market_tool to check HBL stock prices, trends, and recommendations
-2. Use property_market_tool to check 3-bedroom apartment prices and trends in Karachi DHA
-3. Use gold_price_tool to check current 24k gold prices and market trends
-4. Use car_market_tool to check Toyota Corolla 2024 prices, depreciation rates, and resale value
-
-After gathering data from all tools, provide a comprehensive analysis comparing:
-- HBL Stocks
-- 3-bedroom apartment in Karachi DHA
-- 24k gold
-- Toyota Corolla 2024
-
-For each option, analyze:
+When analyzing investment options, consider:
 - Current market price/value
 - Expected returns and growth potential
 - Risk factors
@@ -332,13 +358,13 @@ For each option, analyze:
 - Market trends
 - Fit within the 5M PKR budget
 
-Finally, provide your recommendation with clear reasoning based on the data you gathered from all tools."""
+Provide comprehensive analysis and clear recommendations based on the retrieved information."""
 
-# Create LangChain agent using create_agent
-# Reference: https://docs.langchain.com/oss/python/langchain/quickstart
+# Create LangChain agent with RAG retrieval tool
+# Reference: https://docs.langchain.com/oss/python/langchain/rag#build-a-rag-agent-with-langchain
 portfolio_manager_agent = create_agent(
     model=llm_model,
-    tools=[stock_market_tool, property_market_tool, gold_price_tool, car_market_tool],
+    tools=[retrieve_context],
     system_prompt=SYSTEM_PROMPT,
 )
 
@@ -347,4 +373,24 @@ response = portfolio_manager_agent.invoke(
     {"messages": [{"role": "user", "content": "Provide investment recommendations for a budget of 5,000,000 PKR."}]}
 )
 
-print(response)
+# Extract and print AIMessage from response
+# Get the last AIMessage which contains the final response
+if "messages" in response:
+    # Find all AIMessages and get the last one (which has the final response)
+    ai_messages = [msg for msg in response["messages"] if isinstance(msg, AIMessage)]
+    if ai_messages:
+        # Get the last AIMessage which should have the actual content
+        final_ai_message = ai_messages[-1]
+        if final_ai_message.content:
+            print(final_ai_message.content)
+        else:
+            print("AIMessage found but content is empty")
+            print(final_ai_message)
+    else:
+        # If no AIMessage found, print the last message
+        if response["messages"]:
+            print(response["messages"][-1])
+        else:
+            print(response)
+else:
+    print(response)
