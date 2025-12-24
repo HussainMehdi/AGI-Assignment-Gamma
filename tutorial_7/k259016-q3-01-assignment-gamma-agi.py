@@ -1,12 +1,10 @@
-from crewai import Agent, LLM
-from crewai.tools import tool
+from langchain.chat_models import init_chat_model
+from langchain.agents import create_agent
+from langchain.tools import tool
 from typing import Optional
 
-llm_model = LLM(
-    model="ollama/llama3.2",
-    base_url="http://localhost:11434",
-    
-)
+
+llm_model = init_chat_model("gpt-4o-mini")
 
 # ==================== KNOWLEDGE BASES ====================
 
@@ -230,7 +228,7 @@ CAR_MARKET_KB = {
 
 # ==================== TOOLS ====================
 
-@tool("Stock Market Information Tool")
+@tool
 def stock_market_tool(stock_symbol: str) -> str:
     """
     Retrieve information about Pakistani stocks from the knowledge base.
@@ -242,13 +240,13 @@ def stock_market_tool(stock_symbol: str) -> str:
         Detailed stock information including price, trend, and recommendations
     """
     stock_symbol = stock_symbol.upper()
-    if STOCK_MARKET_KB[stock_symbol]:
+    if stock_symbol in STOCK_MARKET_KB:
         return str(STOCK_MARKET_KB[stock_symbol])
     else:
         #  return keys like {available stocks: HBL, UBL, OGDC, PSO, KSE-100}
         return f"Available stocks: {', '.join(STOCK_MARKET_KB.keys())}"
 
-@tool("Property Market Information Tool")
+@tool
 def property_market_tool(location: str, property_type: Optional[str] = None) -> str:
     """
     Retrieve property market information from the knowledge base.
@@ -272,7 +270,7 @@ def property_market_tool(location: str, property_type: Optional[str] = None) -> 
     else:
         return f"Available locations: {', '.join(PROPERTY_MARKET_KB.keys())}"
 
-@tool("Gold Price Information Tool")
+@tool
 def gold_price_tool() -> str:
     """
     Retrieve current gold prices from the knowledge base.
@@ -286,7 +284,7 @@ def gold_price_tool() -> str:
     
     return f"Current gold prices: {GOLD_PRICE_KB}"
     
-@tool("Car Market Information Tool")
+@tool
 def car_market_tool(car_model: str, model_year: Optional[str] = None) -> str:
     """
     Retrieve car market information from the knowledge base.
@@ -307,18 +305,12 @@ def car_market_tool(car_model: str, model_year: Optional[str] = None) -> str:
         return f"Available car models: {', '.join(CAR_MARKET_KB.keys())}"
 
 
-# Portfolio Manager Agent (has access to all tools)
-portfolio_manager_agent = Agent(
-    role="Senior Portfolio Manager and Investment Advisor",
-    goal="Analyze all available investment options using stock market, property market, gold prices, and car market tools to provide data-driven, comprehensive investment recommendations tailored to the investor's budget and goals",
-    backstory="An experienced Pakistani financial advisor with deep expertise across multiple asset classes. You systematically use all available market analysis tools - stock_market_tool, property_market_tool, gold_price_tool, and car_market_tool - to gather current market data before making recommendations. You compare returns, risks, liquidity, and market trends across stocks, real estate, precious metals, and vehicles to provide holistic investment advice.",
-    llm=llm_model,
-    tools=[stock_market_tool, property_market_tool, gold_price_tool, car_market_tool],
-    verbose=True,
-    max_iter=10,
-    allow_delegation=False
-)
-response = portfolio_manager_agent.kickoff("""You are a Pakistani portfolio manager advising an individual investor with a budget of 5,000,000 PKR.
+# Define system prompt for the portfolio manager agent
+SYSTEM_PROMPT = """You are a Senior Portfolio Manager and Investment Advisor with deep expertise across multiple asset classes.
+
+You systematically use all available market analysis tools - stock_market_tool, property_market_tool, gold_price_tool, and car_market_tool - to gather current market data before making recommendations. You compare returns, risks, liquidity, and market trends across stocks, real estate, precious metals, and vehicles to provide holistic investment advice.
+
+You are advising an individual investor with a budget of 5,000,000 PKR.
 
 IMPORTANT: You MUST use ALL available tools to gather current market information before making your recommendation:
 1. Use stock_market_tool to check HBL stock prices, trends, and recommendations
@@ -340,5 +332,19 @@ For each option, analyze:
 - Market trends
 - Fit within the 5M PKR budget
 
-Finally, provide your recommendation with clear reasoning based on the data you gathered from all tools.""")
+Finally, provide your recommendation with clear reasoning based on the data you gathered from all tools."""
+
+# Create LangChain agent using create_agent
+# Reference: https://docs.langchain.com/oss/python/langchain/quickstart
+portfolio_manager_agent = create_agent(
+    model=llm_model,
+    tools=[stock_market_tool, property_market_tool, gold_price_tool, car_market_tool],
+    system_prompt=SYSTEM_PROMPT,
+)
+
+# Run the agent
+response = portfolio_manager_agent.invoke(
+    {"messages": [{"role": "user", "content": "Provide investment recommendations for a budget of 5,000,000 PKR."}]}
+)
+
 print(response)
