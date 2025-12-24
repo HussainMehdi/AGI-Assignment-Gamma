@@ -286,6 +286,83 @@ NUTRITIONAL_INFO_KB = {
     }
 }
 
+# Quality Control Department Operations Knowledge Base
+QC_OPERATIONS_KB = {
+    "inspection_procedures": {
+        "receiving_inspection": {
+            "raw_materials": ["check_expiry_dates", "verify_certificates", "visual_quality_check", "temperature_verification"],
+            "packaging": ["check_integrity", "verify_labels", "check_for_damage", "verify_batch_numbers"],
+            "documentation": ["verify_supplier_certificates", "check_halal_certification", "verify_origin_certificates"]
+        },
+        "in_process_inspection": {
+            "cooking_process": ["temperature_monitoring", "cooking_time_verification", "spice_measurement_accuracy", "hygiene_compliance"],
+            "preparation_area": ["surface_cleanliness", "equipment_sanitization", "cross_contamination_checks", "personal_hygiene_verification"],
+            "critical_control_points": ["haccp_monitoring", "temperature_logs", "ph_measurements", "visual_quality_checks"]
+        },
+        "finished_product_inspection": {
+            "quality_attributes": ["appearance", "texture", "taste", "aroma", "temperature"],
+            "safety_checks": ["microbiological_testing", "chemical_analysis", "foreign_object_detection", "allergen_verification"],
+            "packaging_checks": ["seal_integrity", "label_accuracy", "weight_verification", "expiry_date_labeling"]
+        }
+    },
+    "quality_control_checklists": {
+        "daily_checks": ["temperature_logs", "hygiene_audits", "equipment_calibration", "staff_training_verification"],
+        "weekly_checks": ["deep_cleaning_verification", "supplier_audit", "waste_management_check", "pest_control_verification"],
+        "monthly_checks": ["comprehensive_audit", "equipment_maintenance", "staff_certification_renewal", "regulatory_compliance_review"]
+    },
+    "non_conformance_management": {
+        "identification": ["visual_inspection_failures", "test_result_deviations", "customer_complaints", "internal_audit_findings"],
+        "documentation": ["non_conformance_report", "root_cause_analysis", "corrective_action_plan", "preventive_measures"],
+        "disposition": ["reject_and_quarantine", "rework_if_possible", "dispose_if_unsafe", "traceability_records"]
+    },
+    "testing_protocols": {
+        "microbiological": {
+            "total_plate_count": "standard_plate_count_method",
+            "coliform_test": "most_probable_number_method",
+            "e_coli_detection": "selective_media_culture",
+            "salmonella_test": "enrichment_and_isolation",
+            "frequency": "daily_for_high_risk_weekly_for_low_risk"
+        },
+        "chemical": {
+            "pesticide_residue": "chromatography_methods",
+            "heavy_metals": "atomic_absorption_spectroscopy",
+            "additives": "hplc_gc_methods",
+            "adulteration": "specific_tests_for_milk_oil_spices",
+            "frequency": "monthly_or_as_per_risk_assessment"
+        },
+        "physical": {
+            "temperature": "calibrated_thermometers",
+            "ph_level": "ph_meter_calibration",
+            "moisture_content": "moisture_analyzer",
+            "texture": "texture_analyzer_equipment",
+            "frequency": "continuous_monitoring_for_temperature_daily_for_others"
+        }
+    },
+    "documentation_requirements": {
+        "quality_records": ["inspection_reports", "test_results", "calibration_certificates", "training_records", "audit_reports"],
+        "traceability": ["batch_codes", "supplier_information", "production_dates", "distribution_records"],
+        "compliance": ["psqca_certificates", "halal_certification", "food_license", "haccp_documentation"]
+    },
+    "regulatory_compliance": {
+        "pakistan_standards": {
+            "psqca": "Pakistan_Standards_and_Quality_Control_Authority",
+            "requirements": ["product_standards", "labeling_requirements", "packaging_standards", "safety_standards"],
+            "certification": "psqca_certification_mandatory_for_export"
+        },
+        "food_safety": {
+            "fssa": "Food_Safety_and_Standards_Act",
+            "haccp": "mandatory_for_food_businesses",
+            "gmp": "Good_Manufacturing_Practices_required",
+            "licensing": "food_business_license_required"
+        },
+        "halal_certification": {
+            "authority": "Pakistan_Halal_Authority",
+            "requirements": ["halal_ingredients", "halal_processing", "separation_from_non_halal", "certification_audit"],
+            "renewal": "annual_certification_renewal_required"
+        }
+    }
+}
+
 
 # ==================== RAG IMPLEMENTATION ====================
 
@@ -434,6 +511,35 @@ def create_documents_from_kb():
         )
         documents.append(doc)
     
+    # Quality Control Operations documents
+    for qc_operation, data in QC_OPERATIONS_KB.items():
+        content = f"QC Operation: {qc_operation}\n"
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if isinstance(value, dict):
+                    content += f"{key}:\n"
+                    for sub_key, sub_value in value.items():
+                        if isinstance(sub_value, list):
+                            content += f"  {sub_key}: {', '.join(map(str, sub_value))}\n"
+                        elif isinstance(sub_value, dict):
+                            content += f"  {sub_key}:\n"
+                            for sub_sub_key, sub_sub_value in sub_value.items():
+                                if isinstance(sub_sub_value, list):
+                                    content += f"    {sub_sub_key}: {', '.join(map(str, sub_sub_value))}\n"
+                                else:
+                                    content += f"    {sub_sub_key}: {sub_sub_value}\n"
+                        else:
+                            content += f"  {sub_key}: {sub_value}\n"
+                elif isinstance(value, list):
+                    content += f"{key}: {', '.join(map(str, value))}\n"
+                else:
+                    content += f"{key}: {value}\n"
+        doc = Document(
+            page_content=content,
+            metadata={"source": "qc_operations", "qc_operation": qc_operation, "category": "quality_control"}
+        )
+        documents.append(doc)
+    
     return documents
 
 # Create documents from knowledge bases
@@ -450,7 +556,7 @@ vector_store = FAISS.from_documents(documents=all_splits, embedding=embeddings)
 # Create retrieval tool for RAG
 @tool(response_format="content_and_artifact")
 def retrieve_context(query: str):
-    """Retrieve relevant information from the Pakistani food recipes and food quality knowledge base to help answer queries about traditional recipes, cooking techniques, food quality standards, quality checking methods, storage guidelines, and nutritional information."""
+    """Retrieve relevant information from the food quality control knowledge base to help answer queries about quality control procedures, inspection methods, testing protocols, regulatory compliance, non-conformance management, documentation requirements, and quality standards for Pakistani food products."""
     retrieved_docs = vector_store.similarity_search(query, k=4)
     serialized = "\n\n".join(
         (f"Source: {doc.metadata.get('source', 'unknown')} | Category: {doc.metadata.get('category', 'unknown')}\nContent: {doc.page_content}")
@@ -459,49 +565,61 @@ def retrieve_context(query: str):
     return serialized, retrieved_docs
 
 
-# Define system prompt for the food recipe and quality checking agent
-SYSTEM_PROMPT = """You are a Senior Culinary Expert and Food Quality Specialist with deep expertise in Pakistani cuisine, traditional recipes, and food safety standards.
+# Define system prompt for the quality control department agent
+SYSTEM_PROMPT = """You are a Senior Quality Control Manager and Food Safety Expert specializing in Pakistani food products. Your primary role is to assist the Quality Control Department in ensuring food safety, quality standards, and regulatory compliance.
 
 You have access to a retrieval tool that can search through a comprehensive knowledge base containing information about:
-- Traditional Pakistani recipes (Biryani, Karahi, Nihari, Haleem, Kebabs, Pulao)
-- Regional specialties (Punjab, Sindh, KP, Balochistan)
-- Cooking techniques and ingredients (spice blends, cooking methods, essential ingredients)
-- Food quality standards (hygiene standards, temperature control, storage guidelines, food safety regulations)
+- Quality control inspection procedures (receiving, in-process, finished product inspection)
+- Quality control checklists (daily, weekly, monthly checks)
+- Non-conformance management (identification, documentation, disposition)
+- Testing protocols (microbiological, chemical, physical tests with frequencies)
+- Documentation requirements (quality records, traceability, compliance documents)
+- Regulatory compliance (PSQCA standards, Food Safety and Standards Act, HACCP, Halal certification)
+- Food quality standards (hygiene standards, temperature control, storage guidelines)
 - Quality checking methods (visual inspection, sensory evaluation, physical tests, microbiological tests, chemical analysis)
-- Storage and preservation (refrigeration, freezing, dry storage, preservation methods)
-- Nutritional information (calories, macronutrients, health considerations)
+- Storage and preservation guidelines
+- Traditional Pakistani recipes and cooking techniques (for understanding product specifications)
 
 Use the retrieve_context tool to gather relevant information before providing recommendations. The tool will automatically find the most relevant information based on the user's query.
 
-Your role is to assist:
-- Home cooks and chefs: Provide detailed recipes, cooking techniques, ingredient substitutions, and cooking tips
-- Food businesses and restaurants: Offer guidance on food quality standards, quality checking methods, storage protocols, and compliance with food safety regulations
-- Food inspectors and quality controllers: Provide information on inspection methods, quality standards, testing procedures, and regulatory requirements
-- General public: Share accessible information on recipes, food safety, storage guidelines, and nutritional information
+Your role is to assist Quality Control Department staff including:
+- Quality Control Inspectors: Provide inspection procedures, checklists, testing protocols, and quality standards
+- Quality Assurance Managers: Offer guidance on quality systems, compliance requirements, documentation, and audit procedures
+- Laboratory Technicians: Provide testing methods, protocols, equipment calibration, and result interpretation
+- Food Safety Officers: Share information on regulatory compliance, HACCP implementation, and food safety standards
+- Quality Control Supervisors: Assist with non-conformance management, corrective actions, and preventive measures
 
-When providing information, consider:
-- Accuracy of recipes and cooking instructions
-- Food safety and hygiene best practices
-- Quality standards and regulatory compliance
-- Storage and preservation guidelines
-- Nutritional balance and health considerations
-- Regional variations and cultural authenticity
-- Clear, step-by-step instructions for recipes
-- Practical tips for quality checking and food safety
+When providing information, prioritize:
+- Regulatory compliance and legal requirements (PSQCA, FSSA, Halal certification)
+- Food safety and public health protection
+- Quality standards and specifications
+- Systematic inspection and testing procedures
+- Proper documentation and traceability
+- Non-conformance handling and corrective actions
+- Risk assessment and preventive measures
+- Clear, actionable procedures and checklists
 
-Always emphasize the importance of food safety, proper hygiene, and following quality standards. Provide comprehensive, accurate information based on the retrieved knowledge base."""
+Always emphasize:
+- Compliance with Pakistan food safety regulations
+- Importance of proper documentation and record-keeping
+- Systematic approach to quality control
+- Risk-based inspection and testing
+- Continuous improvement and preventive actions
+- Training and competency requirements
+
+Provide comprehensive, accurate, and actionable information based on the retrieved knowledge base to support effective quality control operations."""
 
 # Create LangChain agent with RAG retrieval tool
 # Reference: https://docs.langchain.com/oss/python/langchain/rag#build-a-rag-agent-with-langchain
-food_recipe_quality_agent = create_agent(
+quality_control_agent = create_agent(
     model=llm_model,
     tools=[retrieve_context],
     system_prompt=SYSTEM_PROMPT,
 )
 
 # Run the agent
-response = food_recipe_quality_agent.invoke(
-    {"messages": [{"role": "user", "content": "How do I make authentic Chicken Biryani? Also, what are the key quality checks I should perform when preparing and storing this dish?"}]}
+response = quality_control_agent.invoke(
+    {"messages": [{"role": "user", "content": "What are the complete quality control inspection procedures for receiving raw materials for Biryani production? Include all checks, documentation requirements, and testing protocols needed."}]}
 )
 
 # Extract and print AIMessage from response
