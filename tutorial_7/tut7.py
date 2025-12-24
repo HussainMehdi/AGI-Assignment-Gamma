@@ -1,7 +1,7 @@
 from crewai import Agent, LLM
 import os
 llm_model = LLM(
-    model="ollama/hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest",
+    model="ollama/llama3.2",
     base_url="http://localhost:11434"
 )
 
@@ -126,13 +126,13 @@ def pharmacy_task(patient_id, prescription):
     update_patient_file(patient_id, "Pharmacy Agent", note)
 
 
-patient_info = {"id": "001", "name": "Farrukh", "age": 25, "contact": "03133i33222"}
-vitals = {"BP": "120/80", "Weight": "70kg"}
-symptoms = "headache, nausea"
-prescription = "Paracetamol 500mg, twice a day"
+patient_info = {"id": "001", "name": "Hussain Mehdi", "age": 31, "contact": "03333333333"}
+vitals = {"BP": "122/81", "Weight": "70kg"}
+symptoms = "headache, nausea, cough, cold"
+prescription = "Paracetamol 500mg, twice a day, cough syrup, cold syrup"
 
 
-patient_id = reception_task("Farrukh", 25, "03133i33222")
+patient_id = reception_task("Hussain Mehdi", 31, "03333333333")
 queue_task(patient_id)
 evaluation_task(patient_id, vitals)
 doctor_task(patient_id, symptoms)
